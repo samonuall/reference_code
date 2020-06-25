@@ -27,7 +27,7 @@ LOG_NAME = 'pi_pact.log'
 DEFAULT_CONFIG = {
     'advertiser': {
         'control_file': "advertiser_control",
-        'timeout': None,
+        'timeout': 20,
         'uuid': '',
         'major': 1,
         'minor': 1,
@@ -37,7 +37,7 @@ DEFAULT_CONFIG = {
     'scanner': {
         'control_file': "scanner_control",
         'scan_prefix': "pi_pact_scan",
-        'timeout': None,
+        'timeout': 20,
         'revisit': 1,
         'filters': {}
         },

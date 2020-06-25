@@ -9,7 +9,6 @@ uses iBeacon format (https://en.wikipedia.org/wiki/IBeacon).
 """
 
 import argparse
-import pickle
 from bluetooth.ble import BeaconService
 from datetime import datetime
 from itertools import zip_longest
@@ -27,7 +26,7 @@ LOG_NAME = 'pi_pact.log'
 DEFAULT_CONFIG = {
     'advertiser': {
         'control_file': "advertiser_control",
-        'timeout': None,
+        'timeout': 20,
         'uuid': '',
         'major': 1,
         'minor': 1,
@@ -37,7 +36,7 @@ DEFAULT_CONFIG = {
     'scanner': {
         'control_file': "scanner_control",
         'scan_prefix': "pi_pact_scan",
-        'timeout': None,
+        'timeout': 20,
         'revisit': 1,
         'filters': {}
         },
@@ -589,10 +588,6 @@ class Scanner(object):
         advertisements = self.process_scans(scans, timestamps)
         advertisements = self.filter_advertisements(advertisements)
         advertisements.to_csv(scan_file, index_label='SCAN')
-        #store advertisement DF as pickled file for future use in other program
-        with open(Path.cwd() / 'scan_files' / f"{scan_prefix}_{datetime.now():%Y%m%dT%H%M%S}.pkl",
-                    mode='wb') as f:
-            pickle.dump(advertisements, f)
         return advertisements
     
 def setup_logger(config):

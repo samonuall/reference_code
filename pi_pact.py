@@ -9,7 +9,7 @@ uses iBeacon format (https://en.wikipedia.org/wiki/IBeacon).
 """
 
 import argparse
-import os
+import pickle
 from bluetooth.ble import BeaconService
 from datetime import datetime
 from itertools import zip_longest
@@ -589,7 +589,10 @@ class Scanner(object):
         advertisements = self.process_scans(scans, timestamps)
         advertisements = self.filter_advertisements(advertisements)
         advertisements.to_csv(scan_file, index_label='SCAN')
-        #automatically send csv file to laptop to be used in spreadheet
+        #store advertisement DF as pickled file for future use in other program
+        with open(Path.cwd() / 'scan_files' / f"{scan_prefix}_{datetime.now():%Y%m%dT%H%M%S}.pkl",
+                    mode='wb') as f:
+            pickle.dump(advertisements, f)
         return advertisements
     
 def setup_logger(config):

@@ -9,6 +9,7 @@ uses iBeacon format (https://en.wikipedia.org/wiki/IBeacon).
 """
 
 import argparse
+import os
 from bluetooth.ble import BeaconService
 from datetime import datetime
 from itertools import zip_longest
@@ -88,6 +89,9 @@ MINOR_LIMITS = [1, 65535]
 TX_POWER_LIMITS = [-40, 4]
 INTERVAL_LIMITS = [20, 10000] # (ms)
 ALLOWABLE_FILTERS = ID_FILTERS+MEASUREMENT_FILTERS
+
+#computer username for using scp to receive csv files, set to none if not needed
+name = 'samonuallain@10.0.0.4'
 
 class Advertiser(object):
     """Instantiates a BLE beacon advertiser.
@@ -588,6 +592,10 @@ class Scanner(object):
         advertisements = self.process_scans(scans, timestamps)
         advertisements = self.filter_advertisements(advertisements)
         advertisements.to_csv(scan_file, index_label='SCAN')
+        #automatically send csv file to laptop to be used in spreadheet
+        if name is not None:
+            os.system('scp {} {}:{}'.format(scan_file, name, 
+                                    '/Users/samonuallain/Desktop/csv_files'))
         return advertisements
     
 def setup_logger(config):

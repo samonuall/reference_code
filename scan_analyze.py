@@ -4,6 +4,7 @@ and attempts to predict the corresponding distance between the advertiser
 and scanner. 
 Optional arguments:
 	-Specific csv files to be read
+	-Prefix of csv files to be read
 	-If no arguments entered, all csv files in directory are analyzed
 """
 from pathlib import Path
@@ -30,16 +31,7 @@ def average(array):
 
 
 
-#Make list scan_data containing str names of each csv file in the directory
-if(len(sys.argv)) > 1:
-	#Puts only csv files into scan_data, ignoring files without .csv ending
-	scan_data = [sys.argv[i] for i in range(1, len(sys.argv)) 
-							if '.csv' in sys.argv[i]]
-else:
-	cur_dir = Path(os.getcwd())
-	scan_data = [str(f) for f in cur_dir.glob('*.csv')]
-	scan_data.sort()
-def main():
+def plot_files(scan_data):
 	plots = []
 	#create figures each containing at most two graphs
 	for l in range(len(scan_data) // 2):
@@ -71,14 +63,37 @@ def main():
 					linestyle='--', label='Average')
 			axis.set_ylabel('RSSI Value')
 			axis.legend(loc='best')
-			#Make name of subplot <date, time>
-			axis.title.set_text('{}, {}:{}'.format(file_name[-15:-11], 
-											file_name[-10:-8], 
-											file_name[-7:-5]))
+			#Make name of subplot <prefix, date:minute>
+			axis.title.set_text('{}, {}, {}'.format(os.path.basename(file_name)[:-20], 
+											file_name[-14:-11], 
+											file_name[-8:-4]))
 			file_count += 1
 		
 	plt.show()
 	
+
+
+def main():
+	#Make list scan_data containing str names of each csv file in the directory
+	if(len(sys.argv)) > 1:
+		if '.' in sys.argv[1]:
+			#Puts only csv files into scan_data, ignoring files without .csv ending
+			scan_data = [sys.argv[i] for i in range(1, len(sys.argv)) 
+									if '.csv' in sys.argv[i]]
+		else:
+			cur_dir = Path(os.getcwd())
+			#glob all csv files with entered in prefix
+			scan_data = []
+			for i in range(1, len(sys.argv)):
+				scan_data.extend(cur_dir.glob('{}*.csv'.format(sys.argv[i])))
+			scan_data = [str(f) for f in scan_data]
+			scan_data.sort()
+	else:
+		cur_dir = Path(os.getcwd())
+		scan_data = [str(f) for f in cur_dir.glob('*.csv')]
+		scan_data.sort()
+	
+	plot_files(scan_data)
 
 if __name__ == "__main__":
 	main()

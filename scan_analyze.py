@@ -6,6 +6,7 @@ Optional arguments:
 	-Int, number of files to be viewed starting from most recent 
 		and going backwards in a chronological order through csv files
 	-Specific csv files to be read
+	-If no arguments entered, all csv files in directory are analyzed
 """
 from pathlib import Path
 from collections import Counter

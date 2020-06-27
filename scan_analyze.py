@@ -2,9 +2,7 @@
 converting them to numpy arrays. Analyzes collected RSSI values
 and attempts to predict the corresponding distance between the advertiser
 and scanner. 
-Optional arguments: 
-	-Int, number of files to be viewed starting from most recent 
-		and going backwards in a chronological order through csv files
+Optional arguments:
 	-Specific csv files to be read
 	-If no arguments entered, all csv files in directory are analyzed
 """
@@ -34,15 +32,9 @@ def average(array):
 
 #Make list scan_data containing str names of each csv file in the directory
 if(len(sys.argv)) > 1:
-	if '.' in sys.argv[1] or '_' in sys.argv[1]:
-		#Puts only csv files into scan_data, ignoring files without .csv ending
-		scan_data = [sys.argv[i] for i in range(1, len(sys.argv)) 
-								if '.csv' in sys.argv[i]]
-	else:
-		cur_dir = Path(os.getcwd())
-		scan_data = [str(f) for f in cur_dir.glob('*.csv')]
-		scan_data.sort()
-		scan_data = scan_data[-int(sys.argv[1]):]
+	#Puts only csv files into scan_data, ignoring files without .csv ending
+	scan_data = [sys.argv[i] for i in range(1, len(sys.argv)) 
+							if '.csv' in sys.argv[i]]
 else:
 	cur_dir = Path(os.getcwd())
 	scan_data = [str(f) for f in cur_dir.glob('*.csv')]
@@ -79,7 +71,7 @@ def main():
 					linestyle='--', label='Average')
 			axis.set_ylabel('RSSI Value')
 			axis.legend(loc='best')
-			#Make name of subplot <data, time>
+			#Make name of subplot <date, time>
 			axis.title.set_text('{}, {}:{}'.format(file_name[-15:-11], 
 											file_name[-10:-8], 
 											file_name[-7:-5]))

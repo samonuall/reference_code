@@ -132,7 +132,7 @@ def main():
 		plot = True
 	modes = plot_files(scan_data, plot)
 	for mode in modes:
-		print(estimate_dist(mode))
+		print('Estimated Distance: '+estimate_dist(mode))
 
 if __name__ == "__main__":
 	main()

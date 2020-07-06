@@ -25,7 +25,6 @@ expected_values = {-28: '0-10', -35: '10-20', -39: '20-30', -48: '30-40',
 
 def most_frequent(Array, f_count): 
     if len(Array) <= 1:
-	    print('{} is empty'.format(scan_data[f_count]))
 	    return 0
     occurence_count = Counter(Array) 
     return occurence_count.most_common(1)[0][0] 

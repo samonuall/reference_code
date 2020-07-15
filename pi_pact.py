@@ -23,7 +23,9 @@ import sys
 import time
 from uuid import uuid1
 import yaml
+import getpass
 
+home_dir = os.getcwd()[:-14]
 # Default configuration
 LOG_NAME = 'pi_pact.log'
 DEFAULT_CONFIG = {
@@ -324,7 +326,7 @@ class Advertiser(object):
                 run = False
         #Put current uuid in txt file so seperate scanner program
         #Can now its advertiser's uuid
-        with open('/home/pi/reference_code/current_uuid.txt', mode='w') as f:
+        with open('{}reference_code/current_uuid.txt'.format(home_dir), mode='w') as f:
             f.write(self.__uuid)
         
         self.__logger.info("Stopping beacon advertiser.")        
@@ -693,41 +695,39 @@ def parse_args(args):
 def broadcast_RSSI_modes(args, logger):
     advertisements = pd.read_csv('last_scan.csv')
     
-    data = advertisements.values.tolist()
-    print(data)
-    uuids = list(set(advertisements[3][1]))
+    data = advertisements['UUID'].values.tolist()
+    uuids = list(set(data))
     RSSI_modes = {uid: list() for uid in uuids}
     
-    for _uuid, RSSI in advertisements[8]:
+    for _uuid, RSSI in zip(data, advertisements['RSSI'].values.tolist()):
         RSSI_modes[_uuid].append(RSSI)
     for key in RSSI_modes:
         RSSI_modes[key] = most_frequent(RSSI_modes[key])
     uuids.sort()
     
-    minor = ''
-    major = ''
+    minor = 0
+    major = 0
     for i, uuid in enumerate(uuids):
         RSSI = RSSI_modes[uuid]
         if i < 2:
-            minor += RSSI*pow(10, 2*i)
+            minor += abs(RSSI*pow(10, 2*i))
         else:
-            major += RSSI*pow(10, 2*i-4)
-    minor = minor
-    major = major
+            major += abs(RSSI*pow(10, 2*i-4))
+    minor = minor if minor is not 0 else 1
+    major = major if major is not 0 else 1
     
     parsed_args = parse_args(args)
     config = load_config(parsed_args)
     advertiser = Advertiser(logger, **config['advertiser'])
-    advertiser.minor(minor)
-    advertiser.major(major)
-    advertiser.timeout(1)
-    with open('{}/current_uuid.txt'.fprmat(repo_dir), mode='r') as f:
-        advertiser.uuid(f.readline())
+    advertiser.minor = minor
+    advertiser.major = major
+    advertiser.timeout = 1
+    with open('{}/reference_code/current_uuid.txt'.format(home_dir), mode='r') as f:
+        advertiser.uuid = f.readline()
+    print(advertiser.uuid)
     advertiser.advertise()
 
-def most_frequent(Array, f_count): 
-    if len(Array) <= 1:
-	    return 0
+def most_frequent(Array): 
     occurence_count = Counter(Array) 
     return occurence_count.most_common(1)[0][0] 
 
@@ -755,6 +755,7 @@ def main(args):
             advertiser = Advertiser(logger, **config['advertiser'])
             os.system('sudo python3 pi_pact.py -s --timeout {} &'.format(advertiser.timeout))
             advertiser.advertise()
+            output = None
         elif parsed_args['advertiser']:
             logger.info("Beacon advertiser mode selected.")
             advertiser = Advertiser(logger, **config['advertiser'])
@@ -765,7 +766,6 @@ def main(args):
             scanner = Scanner(logger, **config['scanner'])
             advertisements = scanner.scan()
             output = advertisements
-            broadcast_RSSI_modes(args, logger)
     except Exception:
         logger.exception("Fatal exception encountered")
     finally:

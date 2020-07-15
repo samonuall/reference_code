@@ -9,12 +9,15 @@ uses iBeacon format (https://en.wikipedia.org/wiki/IBeacon).
 """
 
 import argparse
+import os
+from collections import Counter
 from bluetooth.ble import BeaconService
 from datetime import datetime
 from itertools import zip_longest
 import logging
 import logging.config
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import sys
 import time
@@ -26,7 +29,7 @@ LOG_NAME = 'pi_pact.log'
 DEFAULT_CONFIG = {
     'advertiser': {
         'control_file': "advertiser_control",
-        'timeout': 60,
+        'timeout': 20,
         'uuid': '',
         'major': 1,
         'minor': 1,
@@ -36,7 +39,7 @@ DEFAULT_CONFIG = {
     'scanner': {
         'control_file': "scanner_control",
         'scan_prefix': "pi_pact_scan",
-        'timeout': 60,
+        'timeout': 20,
         'revisit': 1,
         'filters': {}
         },
@@ -287,7 +290,6 @@ class Advertiser(object):
             
     def advertise(self, timeout=0):
         """Execute BLE beacon advertisement.
-        
         Args:
             timeout (int, float): Time (s) for which to advertise beacon. If
                 specified as None then advertises till user commanded stop via
@@ -320,6 +322,11 @@ class Advertiser(object):
                 self.__logger.debug("Beacon advertiser control flag set to "
                         "stop.")
                 run = False
+        #Put current uuid in txt file so seperate scanner program
+        #Can now its advertiser's uuid
+        with open('/home/pi/reference_code/current_uuid.txt', mode='w') as f:
+            f.write(self.__uuid)
+        
         self.__logger.info("Stopping beacon advertiser.")        
         self.__service.stop_advertising()
         # Cleanup
@@ -588,6 +595,7 @@ class Scanner(object):
         advertisements = self.process_scans(scans, timestamps)
         advertisements = self.filter_advertisements(advertisements)
         advertisements.to_csv(scan_file, index_label='SCAN')
+        advertisements.to_csv('last_scan.csv', index_label='SCAN')
         return advertisements
     
 def setup_logger(config):
@@ -662,6 +670,8 @@ def parse_args(args):
                             help="Beacon advertiser mode.")
     mode_group.add_argument('-s', '--scanner', action='store_true',
                             help="Beacon scanner mode.")
+    mode_group.add_argument('-b', '--both', action='store_true',
+                            help="Beacon scanner and advertiser mode.")
     parser.add_argument('--config_yml', help="Configuration YAML.")
     parser.add_argument('--control_file', help="Control file.")
     parser.add_argument('--scan_prefix', help="Scan output file prefix.")
@@ -680,6 +690,47 @@ def parse_args(args):
             help="Beacon scanner revisit interval (s)")
     return vars(parser.parse_args(args))
     
+def broadcast_RSSI_modes(args, logger):
+    advertisements = pd.read_csv('last_scan.csv')
+    
+    data = advertisements.values.tolist()
+    print(data)
+    uuids = list(set(advertisements[3][1]))
+    RSSI_modes = {uid: list() for uid in uuids}
+    
+    for _uuid, RSSI in advertisements[8]:
+        RSSI_modes[_uuid].append(RSSI)
+    for key in RSSI_modes:
+        RSSI_modes[key] = most_frequent(RSSI_modes[key])
+    uuids.sort()
+    
+    minor = ''
+    major = ''
+    for i, uuid in enumerate(uuids):
+        RSSI = RSSI_modes[uuid]
+        if i < 2:
+            minor += RSSI*pow(10, 2*i)
+        else:
+            major += RSSI*pow(10, 2*i-4)
+    minor = minor
+    major = major
+    
+    parsed_args = parse_args(args)
+    config = load_config(parsed_args)
+    advertiser = Advertiser(logger, **config['advertiser'])
+    advertiser.minor(minor)
+    advertiser.major(major)
+    advertiser.timeout(1)
+    with open('{}/current_uuid.txt'.fprmat(repo_dir), mode='r') as f:
+        advertiser.uuid(f.readline())
+    advertiser.advertise()
+
+def most_frequent(Array, f_count): 
+    if len(Array) <= 1:
+	    return 0
+    occurence_count = Counter(Array) 
+    return occurence_count.most_common(1)[0][0] 
+
 def main(args):
     """Creates beacon and either starts advertising or scanning.
     
@@ -699,7 +750,12 @@ def main(args):
     
     # Create and start beacon advertiser or scanner
     try:
-        if parsed_args['advertiser']:
+        if parsed_args['both']:
+            logger.info("Beacon advertiser and scanner mode selected.")
+            advertiser = Advertiser(logger, **config['advertiser'])
+            os.system('sudo python3 pi_pact.py -s --timeout {} &'.format(advertiser.timeout))
+            advertiser.advertise()
+        elif parsed_args['advertiser']:
             logger.info("Beacon advertiser mode selected.")
             advertiser = Advertiser(logger, **config['advertiser'])
             advertiser.advertise()
@@ -709,9 +765,11 @@ def main(args):
             scanner = Scanner(logger, **config['scanner'])
             advertisements = scanner.scan()
             output = advertisements
+            broadcast_RSSI_modes(args, logger)
     except Exception:
         logger.exception("Fatal exception encountered")
     finally:
+        broadcast_RSSI_modes(args, logger)
         close_logger(logger)
     return output
     
